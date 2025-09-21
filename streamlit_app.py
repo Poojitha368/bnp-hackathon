@@ -136,36 +136,62 @@ df_news = pd.DataFrame(list(cursor_news))
 col1, col2, col3 = st.columns([1,1,2])
 
 # --- Column 1: Donut Chart ---
+# --- Column 1: Sentiment Distribution ---
+# --- Column 1: Sentiment Distribution ---
 with col1:
     st.subheader("📊 Sentiment Distribution")
-    if not df_sentiment.empty:
-        pos_count = df_sentiment[df_sentiment['avg_sentiment_score'] > 3]['avg_sentiment_score'].count()
-        neu_count = df_sentiment[(df_sentiment['avg_sentiment_score'] >= 2) & (df_sentiment['avg_sentiment_score'] <= 3)]['avg_sentiment_score'].count()
-        neg_count = df_sentiment[df_sentiment['avg_sentiment_score'] < 2]['avg_sentiment_score'].count()
+    if not df_news.empty:
+        # Compute sentiment for each headline
+        df_news['sentiment_score'] = df_news['headline'].apply(sentiment_score)
 
-        labels = ['Positive (BUY)', 'Neutral (HOLD)', 'Negative (SELL)']
+        # Filter based on selected period
+        today = datetime.today()
+        if period == "day":
+            from_date = today - timedelta(days=1)
+        elif period == "week":
+            from_date = today - timedelta(days=7)
+        elif period == "month":
+            from_date = today - timedelta(days=30)
+        elif period == "year":
+            from_date = today - timedelta(days=365)
+
+        df_filtered = df_news[df_news['datetime'] >= from_date]
+
+        # Count headlines by sentiment
+        pos_count = df_filtered[df_filtered['sentiment_score'] > 3].shape[0]
+        neu_count = df_filtered[(df_filtered['sentiment_score'] >= 2) & (df_filtered['sentiment_score'] <= 3)].shape[0]
+        neg_count = df_filtered[df_filtered['sentiment_score'] < 2].shape[0]
+
+        total_headlines = len(df_filtered)
+
+        # Donut chart
+        labels = ['Positive', 'Neutral', 'Negative']
         sizes = [pos_count, neu_count, neg_count]
         colors = ['green', 'yellow', 'red']
 
         fig1, ax1 = plt.subplots()
-        ax1.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+        wedges, texts, autotexts = ax1.pie(
+            sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90
+        )
         centre_circle = plt.Circle((0,0),0.70,fc='white')
         fig = plt.gcf()
         fig.gca().add_artist(centre_circle)
         ax1.axis('equal')
+
+        # Add total in the center of the donut
+        plt.text(0, 0, f"{total_headlines}\nTotal", ha='center', va='center', fontsize=12, fontweight='bold')
+
         st.pyplot(fig)
 
-        # Latest recommendation
-        latest_score = df_sentiment['avg_sentiment_score'].iloc[-1]
-        if latest_score >= 3.5:
-            rec = "BUY"
-        elif latest_score >= 2.0:
-            rec = "HOLD"
-        else:
-            rec = "SELL"
-        st.markdown(f"### 💡 Latest Recommendation: **{rec}** (Score: {latest_score}/5)")
+        # Show counts breakdown
+        st.markdown(f"### 📰 Total Headlines: **{total_headlines}**")
+        st.markdown(f"- ✅ Positive: **{pos_count}**")
+        st.markdown(f"- 😐 Neutral: **{neu_count}**")
+        st.markdown(f"- ❌ Negative: **{neg_count}**")
     else:
-        st.warning("No sentiment data for donut chart.")
+        st.warning("No sentiment data available.")
+
+
 
 # --- Column 2: Word Cloud ---
 with col2:
@@ -189,91 +215,14 @@ with col3:
     else:
         st.warning("No sentiment data to show trend.")
 
-# --- Latest News Table ---
-st.subheader("📰 Latest News")
-if not df_news.empty:
-    st.dataframe(df_news[['datetime', 'headline', 'source', 'url']])
-else:
-    st.warning("No news found.")
-
+# # --- Latest News Table ---
+# st.subheader("📰 Latest News")
+# if not df_news.empty:
+#     st.dataframe(df_news[['datetime', 'headline', 'source', 'url']])
+# else:
+#     st.warning("No news found.")
 
 # gemini api key : AIzaSyAUtK59EUEclp9nlbsVP7iIcZpRkvLuENc
 
 # --- Gemini API ---
-GEMINI_API_KEY = "AIzaSyAUtK59EUEclp9nlbsVP7iIcZpRkvLuENc"
-GEMINI_API_URL = "https://api.gemini.com/v1/ai/generate"  # replace with actual endpoint
-
-
-def analyze_factors_and_recommendation(headlines, final_score):
-    # ... prepare the prompt ...
-
-    headers = {
-        "Authorization": f"Bearer {GEMINI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "prompt": prompt,
-        "max_tokens": 500,
-        "temperature": 0.7
-    }
-
-    try:
-        response = requests.post(GEMINI_API_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("text", "No response from Gemini API.")
-    except Exception as e:
-        return f"Gemini API error: {e}"
-
-
-
-st.subheader("🤖 Analyze Factors & Recommendation (30 Days)")
-
-if st.button("Analyze Sentiment Factors & Get Recommendation"):
-    to_date = datetime.today()
-    from_date = to_date - timedelta(days=30)
-
-    # Fetch last 30 days headlines
-    cursor_news_30 = news_collection.find({
-        "company": company,
-        "datetime": {"$gte": from_date, "$lte": to_date}
-    }).sort("datetime", 1)
-    headlines_last30 = [news['headline'] for news in cursor_news_30]
-
-    # Compute final sentiment score over last 30 days
-    cursor_sentiment_30 = sentiment_collection.find({
-        "company": company,
-        "period": "day",
-        "date": {"$gte": str(from_date.date()), "$lte": str(to_date.date())}
-    })
-    sentiments_last30 = [s['avg_sentiment_score'] for s in cursor_sentiment_30]
-    final_score = round(sum(sentiments_last30)/len(sentiments_last30), 2) if sentiments_last30 else None
-
-    # Call Gemini LLM
-    llm_analysis = analyze_factors_and_recommendation(headlines_last30, final_score)
-    
-    # Display the LLM analysis
-    st.markdown("### 📄 LLM Analysis of Factors Affecting Sentiment")
-    st.markdown(llm_analysis)
-
-    # Optional: show headlines in collapsible container
-    with st.expander("Show Headlines Affecting Sentiment"):
-        for h in headlines_last30:
-            st.write(f"- {h}")
-
-    # --- Extract and show recommendation separately ---
-    if llm_analysis:
-        # Simple heuristic: look for BUY/HOLD/SELL in the text
-        llm_text_upper = llm_analysis.upper()
-        if "BUY" in llm_text_upper:
-            rec_text = "BUY"
-        elif "HOLD" in llm_text_upper:
-            rec_text = "HOLD"
-        elif "SELL" in llm_text_upper:
-            rec_text = "SELL"
-        else:
-            rec_text = "No clear recommendation from LLM"
-
-        st.markdown(f"### 💡 Overall Recommendation: **{rec_text}**")
 
