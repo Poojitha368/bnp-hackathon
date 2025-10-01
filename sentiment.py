@@ -1,63 +1,53 @@
-import requests
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
-import matplotlib.pyplot as plt
-import numpy as np
-import datetime
+from transformers import pipeline
+from donutchart import createDonutChart
+from LLMrecommendation import BuySellRecommendation
+from concurrent.futures import ThreadPoolExecutor
 
-# --- 1. Fetch finance/business news from Finnhub ---
-API_KEY = "d376tm1r01qtvbtkcj00d376tm1r01qtvbtkcj0g"  # <-- replace with real one
-API_URL = "https://finnhub.io/api/v1/company-news"
+pipe = pipeline("text-classification", model="ProsusAI/finbert")
 
-today = datetime.date.today()
-week_ago = today - datetime.timedelta(days=7)
+def decideSentiment(texts):
+    results = pipe(texts)
+    return results
 
-params = {
-    'symbol': 'AAPL',
-    'from': str(week_ago),
-    'to': str(today),
-    'token': API_KEY
-}
+def FindSentiment(texts,company):
+    pos_count,neu_count,neg_count = 0,0,0
+    results = decideSentiment(texts)
+    positive=0
+    neutral=0
+    negative=0
+    sentiment = ""
 
-response = requests.get(API_URL, params=params)
-data = response.json()
+    for text, result in zip(texts, results):
+    # print(f"Text: {text}")
+    # print(f"Sentiment: {result['label']}, Confidence: {result['score']:.4f}\n")
+        if result['label'] == "positive":
+            positive += result['score']
+            pos_count += 1
+        elif result['label'] == "negative":
+            negative += result['score']
+            neg_count += 1
+        else:
+            neutral += result['score']
+            neu_count += 1
 
-# Extract article summaries
-texts = [article['summary'] for article in data if article.get('summary')]
+    if positive > negative and positive > neutral:
+        sentiment = "positive"
+    elif neutral > negative and neutral > positive:
+        sentiment =  "neutral"
+    else:
+        sentiment = "negative"
 
-if not texts:
-    print("⚠ No news articles found for given symbol/date range.")
-else:
-    # --- 2. Load FinBERT model ---
-    model_name = "ProsusAI/finbert"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name)
-    sentiment_analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
+    normalised_score = (positive-negative)/(positive+neutral+negative)
+    # print(normalised_score)
+    final_score = ( (normalised_score+1)/2 *4)+1
 
-    # --- 3. Analyze sentiment ---
-    results = sentiment_analyzer(texts)
+    with ThreadPoolExecutor(max_workers=2) as executor:
 
-    # --- 4. Print results ---
-    for i, (text, res) in enumerate(zip(texts, results), 1):
-        print(f"\nArticle {i}: {text}")
-        print(f"Sentiment: {res['label']}, Confidence: {res['score']:.2f}")
+        #donut chart for the pos,neu,neg ratio
+        executor.submit(createDonutChart(sentiment,pos_count,neu_count,neg_count,final_score,company))
+        #buy sell recommendation using llm
+        executor.submit(BuySellRecommendation(sentiment,results,texts))
 
-    # --- 5. Plot line graph ---
-    def sentiment_to_numeric(label):
-        if label.lower() == 'negative': return 0
-        if label.lower() == 'neutral': return 2.5
-        if label.lower() == 'positive': return 5
-        return 2.5
+    return sentiment,pos_count,neu_count,neg_count,final_score
 
-    numeric_scores = [sentiment_to_numeric(res['label']) for res in results]
 
-    plt.figure(figsize=(12,6))
-    x = np.arange(1, len(texts)+1)
-    plt.plot(x, numeric_scores, marker='o', color='blue', linewidth=2)
-    plt.xticks(x, [f"Article {i}" for i in x], rotation=45)
-    plt.yticks([0,2.5,5], ['Negative','Neutral','Positive'])
-    plt.title("Sentiment Line Graph for AAPL News")
-    plt.xlabel("Articles")
-    plt.ylabel("Sentiment Score (0-5)")
-    plt.grid(True, linestyle='--', alpha=0.5)
-    plt.tight_layout()
-    plt.show()
