@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-
+#debug line 
 
 st.title("📈 Real-Time Market Sentiment Dashboard")
 st.header("Choose a Company")
