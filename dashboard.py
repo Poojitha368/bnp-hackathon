@@ -41,7 +41,7 @@ headlines = FetchDataViaApi(company)
 
 #using threading for simultaneous execution
 if headlines:
-    
+
     #finding the sentiment scores
     sentiment,pos_count,neu_count,neg_count,final_score = FindSentiment(headlines,company)
     st.write("The sentiment score for ",company," out of 5 is ",final_score)
