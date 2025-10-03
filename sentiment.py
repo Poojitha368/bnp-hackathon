@@ -46,7 +46,7 @@ def FindSentiment(texts,company):
         #donut chart for the pos,neu,neg ratio
         executor.submit(createDonutChart(sentiment,pos_count,neu_count,neg_count,final_score,company))
         #buy sell recommendation using llm
-        executor.submit(BuySellRecommendation(sentiment,results,texts))
+        executor.submit(BuySellRecommendation(sentiment,results,texts,company))
 
     return sentiment,pos_count,neu_count,neg_count,final_score
 
