@@ -2,12 +2,12 @@ from ImpactHeadlines import findImpactfulHeadlines
 from ollamaModel import FindLLMResponse
 import streamlit as st
 
-def BuySellRecommendation(sentiment,Sentimentresults,headlines):
+def BuySellRecommendation(sentiment,Sentimentresults,headlines,company):
     posImpact,neuImpact,negImpact = findImpactfulHeadlines(Sentimentresults,headlines)
     prompt = f"""
         You are a financial analyst. Analyze the following sentiment data and headlines:
 
-        overall Sentiment is {sentiment} 
+        overall Sentiment for {company} is {sentiment} 
 
         Top Positive Headlines:
         {chr(10).join(posImpact)}
