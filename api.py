@@ -4,7 +4,7 @@ https://finnhub.io/api/v1/company-news?symbol=SYMBOL&from=YYYY-MM-DD&to=YYYY-MM-
 from datetime import datetime, timedelta
 import requests
 
-API_KEY = "d376tm1r01qtvbtkcj00d376tm1r01qtvbtkcj0g"
+API_KEY = "d3ogjuhr01quo6o48h2gd3ogjuhr01quo6o48h30"
 BASE_URL = "https://finnhub.io/api/v1/company-news"
 
 
@@ -13,7 +13,7 @@ def FetchDataViaApi(company):
         to_date = datetime.today()
         from_date = to_date - timedelta(days=days)
         params = {
-            'description': company,
+            'symbol': company,
             'from': from_date.strftime('%Y-%m-%d'),
             'to': to_date.strftime('%Y-%m-%d'),
             'token': API_KEY

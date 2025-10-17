@@ -2,7 +2,8 @@ import streamlit as st
 from sentiment import FindSentiment
 from api import FetchDataViaApi
 from GenerateWordCloud import wordCloudImage
-from FindCompanies import FetchCompanies
+# from FindCompanies import FetchCompanies
+import threading
 # from LLMrecommendation import BuySellRecommendation
 
 
@@ -31,14 +32,15 @@ company = st.selectbox("Companies", companies)
 
 #fetching news data via finhubb api
 if company:
-    headlines = FetchDataViaApi(company)
-    # headlines = [
-    #     "Apple internally weighs bid for ChatGPT rival Perplexity, Bloomberg says",
-    #     "Apple (AAPL) Rises As Market Takes a Dip: Key Facts",
-    #     "Apple executives held internal talks about buying Perplexity, Bloomberg News reports",
-    #     "Stocks Settle Mostly Lower as Chip Makers Fall"
-    # ]
-
+    # headlines = FetchDataViaApi(company)
+    headlines = [
+        "Apple internally weighs bid for ChatGPT rival Perplexity, Bloomberg says",
+        "Apple (AAPL) Rises As Market Takes a Dip: Key Facts",
+        "Apple executives held internal talks about buying Perplexity, Bloomberg News reports",
+        "Stocks Settle Mostly Lower as Chip Makers Fall"
+    ]
+    print(headlines)
+    print(len(headlines))
 
     if headlines:
 
@@ -82,18 +84,18 @@ if company:
 
 
 
+if __name__ == "main":
 
+    #initialize the threads
+    # Create threads
+    thread1 = threading.Thread(target=FindSentiment)
+    thread2 = threading.Thread(target=wordCloudImage)
 
-'''#initialize the threads
-# Create threads
-thread1 = threading.Thread(target=FindSentiment)
-thread2 = threading.Thread(target=wordCloudImage)
+    # Start all simultaneously
+    thread1.start()
+    thread2.start()
 
-# Start all simultaneously
-thread1.start()
-thread2.start()
-
-# Wait for completion
-thread1.join()
-thread2.join()'''
+    # Wait for completion
+    thread1.join()
+    thread2.join()
 
