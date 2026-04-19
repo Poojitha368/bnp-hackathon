@@ -39,5 +39,5 @@ def FetchDataViaApi(company):
     
     return headlines
 
-    
+   
     
