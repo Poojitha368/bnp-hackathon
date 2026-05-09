@@ -8,4 +8,4 @@ response = requests.get(url)
 if response.status_code == 200:
     news_data = response.json()
    
- print(news_data)
+ print(news_data) 
