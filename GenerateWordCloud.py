@@ -9,4 +9,3 @@ def wordCloudImage(headlines):
     wordcloud = WordCloud(width=400, height=300, background_color="white").generate_from_frequencies(freqs)
     return wordcloud.to_image()
 
- 
